@@ -65,7 +65,7 @@ export default function AboutContent() {
 				</div>
 
 				<p className="text-muted-foreground">
-					I'm currently seeking opportunities to apply my knowledge and skills in a professional research environment where I can continue to grow and make meaningful contributions to the field of cybersecurity.
+					I&#39;m currently seeking opportunities to apply my knowledge and skills in a professional research environment where I can continue to grow and make meaningful contributions to the field of cybersecurity.
 				</p>
 
 				<CVButton />

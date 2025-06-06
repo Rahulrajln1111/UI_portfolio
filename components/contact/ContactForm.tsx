@@ -88,7 +88,7 @@ export default function ContactForm() {
         <CheckCircle className="text-green-500 h-16 w-16 mb-4" />
         <h3 className="text-2xl font-bold mb-2">Thank You!</h3>
         <p className="text-muted-foreground mb-6">
-          Your message has been sent successfully. I'll get back to you as soon as possible.
+          Your message has been sent successfully. I&#39;ll get back to you as soon as possible.
         </p>
         <Button onClick={() => setIsSubmitted(false)}>Send Another Message</Button>
       </div>
