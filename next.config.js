@@ -1,21 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',  // This replaces next export CLI command
-  // Optional if you want to define explicit routes for static export
-  // exportPathMap: async () => {
-  //   return {
-  //     '/': { page: '/' },
-  //     '/about': { page: '/about' },
-  //     '/contact': { page: '/contact' },
-  //     // Add other routes here
-  //   };
-  // },
+  output: 'export',             // Enables static export
+  images: {
+    unoptimized: true,          // Disables Image Optimization for static export
+  },
+  // Uncomment and edit if you want custom routing
+  // exportPathMap: async () => ({
+  //   '/': { page: '/' },
+  //   '/about': { page: '/about' },
+  //   '/contact': { page: '/contact' },
+  //   // Add other routes here
+  // }),
 };
 
-module.exports = {
-  output: 'export',
-  images: {
-    unoptimized: true,
-  },
-}
-
+module.exports = nextConfig;
