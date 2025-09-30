@@ -7,6 +7,8 @@ import Footer from '@/components/layout/Footer';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { Toaster } from '@/components/ui/sonner';
 import LoadingAnimation from '@/components/common/LoadingAnimation';
+// --- NEW FIREBASE IMPORTS ---
+import { AuthProvider } from '@/context/auth-context'; 
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,21 +25,25 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<link rel="shortcut icon" href="./flask.png" type="image/x-icon" />
-			<body className={inter.className}>
+			<link rel="shortcut icon" href="./cyber-attack.png" type="image/x-icon" />
+			{/* IMPORTANT: ID added for the LoadingAnimation logic */}
+			<body id="root-body" className={inter.className}> 
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
 					enableSystem
 					disableTransitionOnChange
 				>
-					<LoadingAnimation />
-					<Navbar />
-					<main className="min-h-screen">
-						{children}
-					</main>
-					<Footer />
-					<ThemeToggle />
+					{/* WRAPPING the entire application with AuthProvider */}
+					<AuthProvider>
+						<LoadingAnimation />
+						<Navbar />
+						<main className="min-h-screen">
+							{children}
+						</main>
+						<Footer />
+						<ThemeToggle />
+					</AuthProvider>
 					<Toaster position="bottom-right" />
 				</ThemeProvider>
 			</body>
