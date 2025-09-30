@@ -1,107 +1,79 @@
-import { redirect } from 'next/navigation';
+'use client'; // 🛑 BUILD FIX: Must be the very first line
+
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-context';
+import { Loader2 } from 'lucide-react';
 import NewPostForm from '@/components/admin/NewPostForm'; 
+import { onSaveAction } from './actions'; 
 
-// Ensure the page is always dynamic for safe server-side checks.
-export const dynamic = 'force-dynamic';
 
-// --- Shared Interfaces (Must be defined once) ---
-interface PostData {
-    id?: string;
-    title: string;
-    slug: string;
-    content: string;
-    tags: string;
-    authorName: string;
-    createdAt?: any;
-    updatedAt?: any;
+// --- Interface Assumption (Matches auth-context.tsx) ---
+interface AuthUser { 
+    isAdmin?: boolean; 
+}
+interface AuthContext {
+    user: AuthUser | null;
+    isAuthReady: boolean; 
 }
 // ----------------------------------------------------
 
-// NOTE: Placeholder for your server-side data fetching logic
-const getBlogPostBySlug = async (slug: string): Promise<PostData | null> => {
-    console.log(`[SERVER] Attempting to fetch post with slug: ${slug}`);
-    // Replace with actual data fetching (e.g., Firestore Admin SDK)
-    return null; 
-};
-
 /**
- * 🚨 CRITICAL SECURITY IMPLEMENTATION: Server-side check for admin status.
- * 🛑 WARNING: This MUST be a real check (e.g., verifying a session cookie/token).
+ * Component that renders the actual Admin Editor form.
  */
-async function getAdminSession(): Promise<boolean> {
-    // 🛑 TEMPORARY: Returning true to allow the page to load after login.
-    return true; 
-}
-
-
-export default async function AdminPage({ 
-    searchParams,
-}: {
-    searchParams: { [key: string]: string | string[] | undefined };
-}) {
-    // ----------------------------------------------------
-    // 🎯 SECURITY CHECK (Server Gate)
-    const isAdmin = await getAdminSession();
-    
-    if (!isAdmin) {
-        redirect('/admin-login'); 
-    }
-    // ----------------------------------------------------
-    
-    const editParam = searchParams['edit'];
-    
-    const slugToEdit = typeof editParam === 'string' ? editParam : undefined;
-    
-    let initialPost: PostData | null = null;
-    let isNew = true;
-
-    // Data Fetching Logic (Server-Side)
-    if (slugToEdit) {
-        try {
-            const post = await getBlogPostBySlug(slugToEdit); 
-            
-            if (post) {
-                initialPost = post;
-                isNew = false;
-            }
-        } catch (error) {
-            console.error("[SERVER] Error fetching post data in AdminPage:", error);
-        }
-    }
-
-    // 🚀 Server-side action definition
-    const savePostAction = async (postData: PostData) => {
-        'use server';
-
-        const isAuth = await getAdminSession();
-        if (!isAuth) {
-            throw new Error("Unauthorized action attempted. Please log in.");
-        }
-        
-        // 🛑 CRITICAL: ADD YOUR FIRESTORE ADMIN SDK SAVE/UPDATE LOGIC HERE
-        try {
-            console.log(`[SERVER ACTION] ${isNew ? 'Saving' : 'Updating'} post: ${postData.title}`);
-            // Example: await firestoreServer.savePost(postData);
-
-            if (isNew) {
-                // Redirect to the edit view of the newly created post
-                redirect(`/admin?edit=${postData.slug}`); 
-            }
-            
-        } catch (error) {
-            console.error("[SERVER ACTION] Failed to save post:", error);
-            throw new Error("Post failed to save to database.");
-        }
-    };
+function AdminDashboardContent({ onSaveAction }: { onSaveAction: (slug: string) => Promise<void> }) {
+    // FIX: Using URLSearchParams to correctly read client-side query parameters
+    const editParam = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('edit');
+    const isNew = !editParam;
 
     return (
-        <div className="min-h-screen bg-gray-950 text-white">
-            <NewPostForm
+        <div className="min-h-screen w-full bg-gray-950 text-white">
+            <NewPostForm 
                 isNew={isNew}
-                initialPost={initialPost}
-                // 🟢 FIX: The prop passed down is named 'onSaveAction'
-                onSaveAction={savePostAction} 
-            />
+                initialPost={null} 
+                onSaveAction={onSaveAction} 
+            /> 
         </div>
     );
+}
+// ----------------------------------------------------
+
+
+export default function AdminPage() {
+    const { user, isAuthReady } = useAuth() as AuthContext;
+    const router = useRouter();
+
+    const isAuthenticatedAdmin = user && user.isAdmin;
+    const targetPath = '/admin-login';
+    
+    useEffect(() => {
+        // Redirection logic (Client-side Guard)
+        if (isAuthReady && !isAuthenticatedAdmin) {
+            console.log('[AdminPage] Not authenticated. Redirecting to login.');
+            router.replace(targetPath);
+        }
+    }, [isAuthReady, isAuthenticatedAdmin, router]);
+
+    
+    // --- Rendering Logic ---
+
+    if (!isAuthReady) {
+        return (
+            <div className="flex justify-center items-center h-screen text-[#00ff00] text-lg">
+                <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" /> 
+                Verifying admin status...
+            </div>
+        );
+    }
+
+    if (!isAuthenticatedAdmin) {
+        return (
+            <div className="flex justify-center items-center h-screen text-red-500 text-lg">
+                Access Denied. Redirecting...
+            </div>
+        );
+    }
+
+    // Pass the imported Server Action
+    return <AdminDashboardContent onSaveAction={onSaveAction} />;
 }
