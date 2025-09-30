@@ -1,10 +1,10 @@
-import NewPostForm from '@/components/admin/NewPostForm';
 import { redirect } from 'next/navigation';
+import NewPostForm from '@/components/admin/NewPostForm'; 
 
-// 🟢 FIX 1: Ensure the page is always dynamic to safely read searchParams.
+// Ensure the page is always dynamic for safe server-side checks.
 export const dynamic = 'force-dynamic';
 
-// --- Shared Interface ---
+// --- Shared Interfaces (Must be defined once) ---
 interface PostData {
     id?: string;
     title: string;
@@ -15,26 +15,42 @@ interface PostData {
     createdAt?: any;
     updatedAt?: any;
 }
+// ----------------------------------------------------
 
 // NOTE: Placeholder for your server-side data fetching logic
 const getBlogPostBySlug = async (slug: string): Promise<PostData | null> => {
-    // Replace this with your actual Firestore server query
     console.log(`[SERVER] Attempting to fetch post with slug: ${slug}`);
+    // Replace with actual data fetching (e.g., Firestore Admin SDK)
     return null; 
 };
-// ------------------------
+
+/**
+ * 🚨 CRITICAL SECURITY IMPLEMENTATION: Server-side check for admin status.
+ * 🛑 WARNING: This MUST be a real check (e.g., verifying a session cookie/token).
+ */
+async function getAdminSession(): Promise<boolean> {
+    // 🛑 TEMPORARY: Returning true to allow the page to load after login.
+    return true; 
+}
+
 
 export default async function AdminPage({ 
     searchParams,
 }: {
     searchParams: { [key: string]: string | string[] | undefined };
 }) {
-    // 🟢 FINAL FIX: Access the property of searchParams immediately.
-    // The previous error was pointing to the usage of `searchParams.edit` 
-    // in the logic flow that led to line 39 (which is the data fetch line).
-    const slugToEdit = typeof searchParams.edit === 'string' 
-        ? searchParams.edit 
-        : undefined;
+    // ----------------------------------------------------
+    // 🎯 SECURITY CHECK (Server Gate)
+    const isAdmin = await getAdminSession();
+    
+    if (!isAdmin) {
+        redirect('/admin-login'); 
+    }
+    // ----------------------------------------------------
+    
+    const editParam = searchParams['edit'];
+    
+    const slugToEdit = typeof editParam === 'string' ? editParam : undefined;
     
     let initialPost: PostData | null = null;
     let isNew = true;
@@ -42,9 +58,8 @@ export default async function AdminPage({
     // Data Fetching Logic (Server-Side)
     if (slugToEdit) {
         try {
-            // Line 39 in your stack trace is here: post is defined using await
             const post = await getBlogPostBySlug(slugToEdit); 
-             
+            
             if (post) {
                 initialPost = post;
                 isNew = false;
@@ -54,12 +69,28 @@ export default async function AdminPage({
         }
     }
 
-    // Server-side action passed to the client component
-    const onSaveSuccess = async (slug: string) => {
+    // 🚀 Server-side action definition
+    const savePostAction = async (postData: PostData) => {
         'use server';
 
-        if (isNew) {
-            redirect(`/admin?edit=${slug}`);
+        const isAuth = await getAdminSession();
+        if (!isAuth) {
+            throw new Error("Unauthorized action attempted. Please log in.");
+        }
+        
+        // 🛑 CRITICAL: ADD YOUR FIRESTORE ADMIN SDK SAVE/UPDATE LOGIC HERE
+        try {
+            console.log(`[SERVER ACTION] ${isNew ? 'Saving' : 'Updating'} post: ${postData.title}`);
+            // Example: await firestoreServer.savePost(postData);
+
+            if (isNew) {
+                // Redirect to the edit view of the newly created post
+                redirect(`/admin?edit=${postData.slug}`); 
+            }
+            
+        } catch (error) {
+            console.error("[SERVER ACTION] Failed to save post:", error);
+            throw new Error("Post failed to save to database.");
         }
     };
 
@@ -68,7 +99,8 @@ export default async function AdminPage({
             <NewPostForm
                 isNew={isNew}
                 initialPost={initialPost}
-                onSaveSuccess={onSaveSuccess}
+                // 🟢 FIX: The prop passed down is named 'onSaveAction'
+                onSaveAction={savePostAction} 
             />
         </div>
     );

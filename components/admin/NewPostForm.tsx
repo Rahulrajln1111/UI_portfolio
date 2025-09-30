@@ -21,7 +21,6 @@ import {
     Auth
 } from 'firebase/auth'; 
 import { initializeApp, FirebaseApp } from 'firebase/app';
-// 🟢 Import all necessary icons for file upload UI
 import { Loader2, Save, FileText, Upload, CheckCircle } from 'lucide-react'; 
 
 import TiptapEditor from './TiptapEditor'; // Assuming this is your VISUAL editor
@@ -68,7 +67,8 @@ interface PostData {
 interface NewPostFormProps {
     isNew: boolean;
     initialPost?: PostData | null;
-    onSaveSuccess: (slug: string) => Promise<void>; 
+    // Prop name remains onSaveAction, which calls the Server Action (redirect)
+    onSaveAction: (slug: string) => Promise<void>; 
 }
 
 // ----------------------------------------------------
@@ -94,7 +94,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
             editor.chain().focus().setImage({ src: url, alt: 'Image description' }).run();
         }
     }, [editor]);
-     
+    
     const toggleCodeBlock = useCallback(() => {
         if (!editor) return;
         editor.chain().focus().setParagraph().toggleCodeBlock().run();
@@ -118,7 +118,12 @@ const MenuBar = ({ editor }: { editor: any }) => {
 // ----------------------------------------------------
 // New Post Form Component
 // ----------------------------------------------------
-export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPostFormProps) {
+export default function NewPostForm({ 
+    isNew, 
+    initialPost, 
+    onSaveAction 
+}: NewPostFormProps) {
+    
     // 🟢 AUTH/DB State
     const [isAuthReady, setIsAuthReady] = useState(false);
     const [db, setDb] = useState<Firestore | null>(null);
@@ -130,7 +135,6 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
     
     // 🟢 FILE UPLOAD UI STATE
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(() => {
-        // Load persisted file name on mount
         if (typeof window !== 'undefined') {
             return localStorage.getItem(FILENAME_LOCAL_STORAGE_KEY);
         }
@@ -144,24 +148,20 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
 
     const getInitialContent = useCallback((post: PostData | null | undefined) => {
         if (post && post.content) {
-            return post.content; // 1. Editing existing post (highest priority)
+            return post.content; 
         }
-        
         if (typeof window !== 'undefined') {
-            // 2. Check for content persisted from a file upload
             const uploadedContent = localStorage.getItem(MARKDOWN_LOCAL_STORAGE_KEY);
             if (uploadedContent) {
                 return uploadedContent;
             }
         }
-        
         return post?.content || ''; 
     }, []);
 
     const [formData, setFormData] = useState<PostData>(initialPost || {
         title: '',
         slug: '',
-        // 🟢 FIX 1: Initialize content using persistence check
         content: getInitialContent(initialPost), 
         tags: '',
         authorName: 'Guest Author',
@@ -198,7 +198,7 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
              }
              return;
         }
-       
+        
         const authenticate = async () => {
             try {
                 if (initialAuthToken) {
@@ -233,12 +233,11 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-
         if (error) setError(null);
-       
+        
         setFormData(prev => {
             const newFormData = { ...prev, [name]: value };
-           
+            
             if (name === 'title' && isNew && prev.slug === '') {
                 newFormData.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
             }
@@ -246,11 +245,9 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
         });
     };
 
-    // 🟢 Handler for content changes from the VISUAL editor
     const handleContentUpdate = (markdown: string) => {
         setFormData(prev => ({ ...prev, content: markdown }));
         
-        // Clear file persistence state if the user starts typing/editing manually
         if (typeof window !== 'undefined' && localStorage.getItem(MARKDOWN_LOCAL_STORAGE_KEY)) {
             localStorage.removeItem(MARKDOWN_LOCAL_STORAGE_KEY);
             localStorage.removeItem(FILENAME_LOCAL_STORAGE_KEY);
@@ -258,14 +255,11 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
         }
     };
     
-    // 🟢 FILE UPLOAD HANDLER (INTEGRATED)
     const handleMarkdownUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         if (!file.name.endsWith(".md")) {
-             // You'll need to define a proper useToast or replace this line
-             // if (typeof (window as any).toast === 'function') (window as any).toast({ title: "Error", description: "Please select a valid Markdown (.md) file.", variant: "destructive" });
             e.target.value = "";
             return;
         }
@@ -274,19 +268,13 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target?.result as string;
-            
-            // 🟢 CRITICAL: Update main form data state
             setFormData(prev => ({ ...prev, content: content }));
 
-            // 🟢 CRITICAL: Set UI state and persistence for recovery
             setUploadedFileName(file.name);
             if (typeof window !== 'undefined') {
                 localStorage.setItem(MARKDOWN_LOCAL_STORAGE_KEY, content);
                 localStorage.setItem(FILENAME_LOCAL_STORAGE_KEY, file.name);
             }
-
-            // if (typeof (window as any).toast === 'function') (window as any).toast({ title: "File Loaded", description: `${file.name} is ready for saving.` });
-
             setFileIsLoading(false);
         };
         
@@ -310,7 +298,12 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
         setError(null);
         setMessage(null);
         setIsSaving(true);
+        
+        let saveSuccessful = false;
 
+        // -----------------------------------------------------
+        // 1. ATTEMPT CLIENT-SIDE DATABASE SAVE
+        // -----------------------------------------------------
         try {
             const collectionRef = collection(db, getCollectionPath());
             const postToSave: any = {
@@ -323,7 +316,7 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
                 userId: auth.currentUser?.uid || 'anonymous',
             };
 
-            // --- Slug uniqueness check (for new posts or when slug changed)
+            // Slug uniqueness check
             if (isNew || formData.slug !== (initialPost?.slug || '')) {
                 const q = query(collectionRef, where('slug', '==', formData.slug));
                 const querySnapshot = await getDocs(q);
@@ -336,40 +329,53 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
             }
 
             if (isNew) {
-                // Create new post
                 postToSave.createdAt = serverTimestamp();
                 await addDoc(collectionRef, postToSave);
-
                 setMessage("✅ Post published successfully!");
             } else if (formData.id) {
-                // Update existing post
                 const postDocRef = doc(db, getCollectionPath(), formData.id);
                 await updateDoc(postDocRef, postToSave);
-
                 setMessage("✅ Post updated successfully!");
             }
 
-            // 🟢 FIX 2: Clear local storage on successful save
+            // Clear local storage on successful save
             if (typeof window !== 'undefined') {
                 localStorage.removeItem(MARKDOWN_LOCAL_STORAGE_KEY);
                 localStorage.removeItem(FILENAME_LOCAL_STORAGE_KEY);
             }
             
-            // If successfully saved, run the success callback (which might redirect)
-            if (isNew) {
-                // The post slug is used here, assuming you retrieved it from the addDoc result or use a unique ID/slug.
-                // For this example, we'll use formData.slug.
-                await onSaveSuccess(formData.slug); 
-            }
-
-            setIsSaving(false);
-            return;
-
+            saveSuccessful = true;
+            
         } catch (err: any) {
             console.error("Save Error:", err);
             setError(`Error Saving: ${err.message || 'An error occurred while saving.'}`);
             setIsSaving(false);
+            return; // Stop execution if local save failed
         }
+
+        // -----------------------------------------------------
+        // 2. CALL SERVER ACTION FOR REDIRECTION (Only for New Posts)
+        // -----------------------------------------------------
+        if (saveSuccessful && isNew) {
+            try {
+                // This call triggers the Server Action onSaveAction, which calls redirect().
+                // Next.js will throw a special 'NEXT_REDIRECT' error internally.
+                await onSaveAction(formData.slug); 
+            } catch (err: any) {
+                // 🛑 FIX: Check for the NEXT_REDIRECT error signal
+                if (err.message.includes('NEXT_REDIRECT')) {
+                    // The redirect was successful (normal Next.js behavior). Do nothing.
+                    // The application flow has already been successfully diverted.
+                    return;
+                }
+                
+                // If it's a genuine error (e.g., re-authentication failure in the Server Action), handle it.
+                console.error("Server Action Error (Not Redirect):", err);
+                setError(`Error with post-save action: ${err.message || 'Failed to complete post-save action.'}`);
+            }
+        }
+        
+        setIsSaving(false);
     };
 
 
@@ -402,7 +408,7 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
                         className="w-full text-lg p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-primary focus:border-primary placeholder-gray-500 text-white font-mono"
                     />
                     <p className="text-sm text-gray-400">URL: /blog/{formData.slug}</p>
-                   
+                    
                     <div className="flex space-x-4">
                         <input
                             type="text"
@@ -472,7 +478,7 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
                                 className="flex items-center px-8 py-4 text-lg font-bold rounded-xl transition duration-150 shadow-xl cursor-pointer bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-50"
                                 aria-disabled={fileIsLoading}
                             >
-                                {fileIsLoading ? <Loader2 className="w-6 h-6 mr-3 animate-spin" /> : <Upload className="w-6 h-6 mr-3" />}
+                                {fileIsLoading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Upload className="mr-3 h-6 w-6" />}
                                 {fileIsLoading ? 'Reading File...' : 'Select Markdown File (.md)'}
                             </label>
                         )}
@@ -486,7 +492,6 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
                 <>
                     <div className="w-full px-6">
                         <TiptapEditor
-                            // 🟢 Pass the content, which might be from a persisted file
                             initialContent={formData.content} 
                             onUpdate={handleContentUpdate}
                             onEditorReady={handleEditorReady}
@@ -495,7 +500,6 @@ export default function NewPostForm({ isNew, initialPost, onSaveSuccess }: NewPo
                     {editorInstance && <MenuBar editor={editorInstance} />}
                 </>
             ) : (
-                // 🟢 FIX FOR BUILD ERROR: The actual loading JSX block must be here
                 <div className="flex items-center justify-center min-h-[500px] text-gray-400">
                     <Loader2 className="mr-2 h-8 w-8 animate-spin" />
                     <span className="text-xl">{error ? `Configuration Error: ${error}` : 'Initializing editor and authentication...'}</span>

@@ -1,16 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react'; // <--- Added useEffect
-import SectionContainer from '@/components/common/SectionContainer';
-import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import SectionContainer from '@/components/common/SectionContainer'; 
+import { useAuth } from '@/context/auth-context'; 
+import { useRouter, usePathname } from 'next/navigation';
 import { Loader2, LogIn } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
-// Component to handle the login form
+// --- Interface Assumption ---
+interface AuthUser { 
+    uid: string;
+    email: string;
+    isAdmin?: boolean; 
+}
+interface AuthContext {
+    user: AuthUser | null;
+    isAuthReady: boolean; 
+    signIn: (email: string, password: string) => Promise<void>; 
+    signOut: () => Promise<void>; 
+}
+// ----------------------------
+
+
 const AdminLoginForm: React.FC<{ signIn: (email: string, password: string) => Promise<void> }> = ({ signIn }) => {
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
@@ -23,13 +37,12 @@ const AdminLoginForm: React.FC<{ signIn: (email: string, password: string) => Pr
         setIsLoading(true);
 
         try {
-            await signIn(email, password);
-            // On successful sign-in, the 'user' context state updates, triggering the useEffect below.
+            await signIn(email, password); 
         } catch (err) {
-            console.error("Login error:", err);
+            console.error("Login failed:", err);
             setError("Login failed. Check your credentials.");
         } finally {
-            setIsLoading(false);
+            setIsLoading(false); 
         }
     };
 
@@ -60,38 +73,43 @@ const AdminLoginForm: React.FC<{ signIn: (email: string, password: string) => Pr
     );
 };
 
+
 export default function AdminLoginPage() {
-    const { user, isAuthReady, signIn } = useAuth();
+    const { user, isAuthReady, signIn } = useAuth() as AuthContext; 
     const router = useRouter();
+    const pathname = usePathname();
     
-    // --- FIX: Move Redirection to useEffect ---
+    const isAdmin = user && user.isAdmin; 
+    const targetPath = '/admin';
+
+    
+    // --- Redirection Logic (Handles users already logged in) ---
     useEffect(() => {
-        // Only attempt to redirect after Firebase has finished loading the auth status AND a user is present.
-        if (isAuthReady && user) {
-            router.replace('/admin');
+        const shouldRedirect = isAuthReady && user && isAdmin;
+        
+        console.log(`[AdminLoginPage] EFFECT RUN (Login Check): Path=${pathname} | Ready=${isAuthReady} | User=${!!user} | Admin=${isAdmin}`);
+
+        if (shouldRedirect && pathname !== targetPath) {
+            console.log('>>> ALREADY LOGGED IN. REDIRECTING TO ADMIN! <<<');
+            router.replace(targetPath);
         }
-    }, [isAuthReady, user, router]); 
-    // ------------------------------------------
+    }, [isAuthReady, user, isAdmin, router, pathname]);
+    
+    
+    // --- Rendering Logic ---
 
     if (!isAuthReady) {
         return (
-            <SectionContainer className="pt-24 min-h-[500px] flex justify-center items-center">
-                <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" /> 
+            <SectionContainer className="pt-24 min-h-[500px] flex justify-center items-center text-primary text-lg">
+                <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" /> 
                 Loading authentication status...
             </SectionContainer>
         );
     }
     
-    // If the user is logged in, return null immediately. 
-    // The useEffect hook will handle the navigation in the background.
-    if (user) {
-        return null; 
-    }
-
-    // If not logged in, show the login form
     return (
         <SectionContainer className="pt-24 min-h-[500px] flex justify-center">
-            <AdminLoginForm signIn={signIn} />
+            <AdminLoginForm signIn={signIn} /> 
         </SectionContainer>
     );
 }
