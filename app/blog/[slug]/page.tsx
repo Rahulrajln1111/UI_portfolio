@@ -1,5 +1,4 @@
 import { 
-    // All Firestore imports merged into one statement
     collection, 
     query, 
     where, 
@@ -10,18 +9,20 @@ import {
 } from 'firebase/firestore'; 
 import { initializeApp } from 'firebase/app';
 import { notFound } from 'next/navigation';
+// 💡 This is the client component that will render the CTF style
 import BlogPostContent from './BlogPostContent'; 
 
 // ----------------------------------------------------
 // ⚠️ FIREBASE CONFIG (REQUIRED for Server/Build)
+// NOTE: Using hardcoded config is fine for now, but environment variables are best practice.
 const firebaseConfig = {
-  apiKey: "AIzaSyA2SeX7yl9C2kG_tdeO3P1Ao_Z-VLYx7D0",
-  authDomain: "personal-portfolio-2af66.firebaseapp.com",
-  projectId: "personal-portfolio-2af66",
-  storageBucket: "personal-portfolio-2af66.firebasestorage.app",
-  messagingSenderId: "541477980245",
-  appId: "1:541477980245:web:85e411ca53332ab6246cdc",
-  measurementId: "G-7P11V44HXR"
+    apiKey: "AIzaSyA2SeX7yl9C2kG_tdeO3P1Ao_Z-VLYx7D0",
+    authDomain: "personal-portfolio-2af66.firebaseapp.com",
+    projectId: "personal-portfolio-2af66",
+    storageBucket: "personal-portfolio-2af66.firebasestorage.app",
+    messagingSenderId: "541477980245",
+    appId: "1:541477980245:web:85e411ca53332ab6246cdc",
+    measurementId: "G-7P11V44HXR"
 };
 interface PostData {
     id: string;
@@ -35,12 +36,12 @@ interface PostData {
 
 const getCollectionPath = (appId: string) => `/artifacts/${appId}/public/data/blog_posts`;
 
-// 🎯 1. Server Function: generateStaticParams
+// 🎯 1. Server Function: generateStaticParams (Unchanged)
 export async function generateStaticParams() {
     try {
         const serverApp = initializeApp(firebaseConfig, "nextjs-build-static-params"); 
         const serverDb = getFirestore(serverApp);
-        
+         
         const collectionPath = getCollectionPath(firebaseConfig.appId);
         const q = query(collection(serverDb, collectionPath));
         const querySnapshot = await getDocs(q);
@@ -49,7 +50,6 @@ export async function generateStaticParams() {
             return [];
         }
 
-        // Filter out any documents missing the 'slug' field and ensure the return type is correct
         return querySnapshot.docs.map((doc: DocumentData) => {
             const slug = doc.data().slug;
             if (typeof slug === 'string' && slug) {
@@ -60,12 +60,11 @@ export async function generateStaticParams() {
 
     } catch (error) {
         console.error("FIREBASE ERROR during generateStaticParams:", error);
-        // Return an empty array on error to prevent the build process from crashing
         return [];
     }
 }
 
-// 🎯 2. Server Function: Fetches data for the specific slug
+// 🎯 2. Server Function: Fetches data for the specific slug (Unchanged)
 async function fetchPost(slug: string): Promise<PostData | null> {
     try {
         const serverApp = initializeApp(firebaseConfig, "nextjs-fetch-single-post");
@@ -103,26 +102,23 @@ async function fetchPost(slug: string): Promise<PostData | null> {
 }
 
 
-// 🎯 3. Default Export (Server Component)
+// 🎯 3. Default Export (Server Component) - Main Page
 interface BlogPageProps {
     params: {
         slug: string;
     };
 }
 
-// 🎯 FIX: Await the 'params' object before using 'params.slug'
 export default async function BlogPostPage({ params }: BlogPageProps) {
     
-    // Explicitly await params to resolve the Next.js warning
-    const awaitedParams = await params;
-    
-    // Use the awaited object property
-    const post = await fetchPost(awaitedParams.slug);
+    // 1. Fetch the post data
+    const post = await fetchPost(params.slug);
 
     if (!post) {
+        // 2. If no post is found, use Next.js's notFound handler
         return notFound();
     }
 
-    // Pass the fully fetched data to the Client Component for rendering
+    // 3. Pass the fetched data to the Client Component for rendering
     return <BlogPostContent post={post} />;
 }
