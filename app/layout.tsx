@@ -1,3 +1,5 @@
+// app/layout.tsx
+
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -5,10 +7,12 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { Toaster } from '@/components/ui/sonner';
+// import { Toaster as SonnerToaster } from '@/components/ui/sonner'; // REMOVED/RENAMED
 import LoadingAnimation from '@/components/common/LoadingAnimation';
-// --- NEW FIREBASE IMPORTS ---
+// --- FIREBASE/CONTEXT IMPORTS ---
 import { AuthProvider } from '@/context/auth-context'; 
+// 🔥 FIX: KEEP THIS STANDARD TOASTER IMPORT
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -44,7 +48,9 @@ export default function RootLayout({
 						<Footer />
 						<ThemeToggle />
 					</AuthProvider>
-					<Toaster position="bottom-right" />
+					{/* 🔥 FIX: Render the standard Toaster component here */}
+					{/* <Toaster position="bottom-right" /> -- This was the sonner component. */}
+					<Toaster /> 
 				</ThemeProvider>
 			</body>
 		</html>
