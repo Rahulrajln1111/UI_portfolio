@@ -12,18 +12,9 @@ import {
 import { initializeApp } from 'firebase/app';
 import Link from 'next/link';
 import { Calendar, Tag, ArrowRight } from 'lucide-react'; 
+import { db, firebaseConfig } from '@/lib/firebase'; // Adjust path if needed
 
 // ----------------------------------------------------
-// ⚠️ FIREBASE CONFIG (REQUIRED for Server/Build)
-const firebaseConfig = {
-  apiKey: "AIzaSyA2SeX7yl9C2kG_tdeO3P1Ao_Z-VLYx7D0",
-  authDomain: "personal-portfolio-2af66.firebaseapp.com",
-  projectId: "personal-portfolio-2af66",
-  storageBucket: "personal-portfolio-2af66.firebasestorage.app",
-  messagingSenderId: "541477980245",
-  appId: "1:541477980245:web:85e411ca53332ab6246cdc",
-  measurementId: "G-7P11V44HXR"
-};
 // ----------------------------------------------------
 
 interface Post {
