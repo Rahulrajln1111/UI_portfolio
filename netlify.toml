@@ -6,14 +6,5 @@
   NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
 
-[context.production.environment]
-  NEXT_PUBLIC_FIREBASE_API_KEY = "AIzaSyA2SeX7yl9C2kG_tdeO3P1Ao_Z-VLYx7D0"
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "personal-portfolio-2af66.firebaseapp.com"
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID = "personal-portfolio-2af66"
-  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = "personal-portfolio-2af66.firebasestorage.app"
-  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = "541477980245"
-  NEXT_PUBLIC_FIREBASE_APP_ID = "1:541477980245:web:85e411ca53332ab6246cdc"
-  NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID = "G-7P11V44HXR"
-
 [[plugins]]
   package = "@netlify/plugin-nextjs"
