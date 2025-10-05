@@ -7,12 +7,13 @@ import {
     getDocs, 
     orderBy, 
     getFirestore, 
-    DocumentData
+    DocumentData,
+    QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import Link from 'next/link';
 import { Calendar, Tag, ArrowRight } from 'lucide-react'; 
-import { db, firebaseConfig } from '@/lib/firebase';
+import { firebaseConfig } from '@/lib/firebase';
 
 // ----------------------------------------------------
 // ----------------------------------------------------
@@ -26,6 +27,7 @@ interface Post {
     createdAt: Date | null;
 }
 
+// Ensure appId is passed and valid
 const getCollectionPath = (appId: string) => `/artifacts/${appId}/public/data/blog_posts`;
 
 // Blog List Item (Can remain simple)
@@ -73,27 +75,31 @@ const BlogListItem: React.FC<{ post: Post }> = ({ post }) => {
 
 // ASYNCHRONOUS SERVER COMPONENT
 export default async function BlogPage() {
-    let posts: Post[] = [];
+    const posts: Post[] = [];
 
     try {
+        const appId = firebaseConfig.appId;
+        if (!appId) {
+            throw new Error("FIREBASE_APP_ID is missing in firebaseConfig");
+        }
+
         const serverApp = initializeApp(firebaseConfig, "server-side-fetch-blog-list"); 
         const serverDb = getFirestore(serverApp);
         
-        const path = getCollectionPath(firebaseConfig.appId);
+        const path = getCollectionPath(appId);
         const postsRef = collection(serverDb, path);
         
         // Order by createdAt. This assumes all posts have the field now.
         const q = query(postsRef, orderBy('createdAt', 'desc'));
-
         const snapshot = await getDocs(q);
 
         snapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
             const data = doc.data();
             posts.push({
                 id: doc.id,
-                title: data.title,
-                slug: data.slug,
-                summary: data.summary,
+                title: data.title ?? 'Untitled',
+                slug: data.slug ?? doc.id,
+                summary: data.summary ?? '',
                 tags: Array.isArray(data.tags) ? data.tags : [],
                 createdAt: data.createdAt ? data.createdAt.toDate() : null,
             });
