@@ -12,7 +12,7 @@ import {
 import { initializeApp } from 'firebase/app';
 import Link from 'next/link';
 import { Calendar, Tag, ArrowRight } from 'lucide-react'; 
-import { db, firebaseConfig } from '@/lib/firebase'; // Adjust path if needed
+import { db, firebaseConfig } from '@/lib/firebase';
 
 // ----------------------------------------------------
 // ----------------------------------------------------
