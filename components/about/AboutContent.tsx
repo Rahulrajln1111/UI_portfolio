@@ -16,7 +16,7 @@ export default function AboutContent() {
 			>
 				<div className="relative rounded-lg overflow-hidden shadow-xl">
 					<Image
-						src="https://cdn.pixabay.com/photo/2023/07/19/06/20/ai-generated-8136171_960_720.png"
+						src="bkg.png"
 						alt="Rahul Razz in lab"
 						width={600}
 						height={800}
