@@ -76,18 +76,14 @@ async function fetchPost(slug: string): Promise<PostData | null> {
   }
 }
 
-// 💥 FIX: Define the props interface correctly for a dynamic route.
-// This interface correctly tells TypeScript the structure, allowing the 'await' in the function body.
+// 💥 FINAL FIX: Reverting 'params' back to a Promise type to satisfy the Next.js compiler.
 interface BlogPageProps {
-  params: {
-    slug: string;
-  };
-  // The searchParams property is optional for this component, but required by PageProps
-  searchParams?: { [key: string]: string | string[] | undefined }; 
+  params: Promise<{ slug: string }>; 
 }
 
 export default async function BlogPostPage(props: BlogPageProps) {
-    // ✅ Retained runtime fix: Awaiting the synchronous object to satisfy Next.js runtime warning/error
+    // ✅ This line is required by the Next.js runtime to handle dynamic params correctly.
+    // It is now correctly typed in the interface above.
     const { slug } = await props.params; 
     
     const post = await fetchPost(slug);
