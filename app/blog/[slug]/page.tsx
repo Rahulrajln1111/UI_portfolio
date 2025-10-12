@@ -31,7 +31,6 @@ const getCollectionPath = (appId: string) => `/artifacts/${appId}/public/data/bl
 // --- Generate static paths for SSG ---
 export async function generateStaticParams() {
   try {
-    // We can directly use the imported 'db' instance
     const collectionPath = getCollectionPath(firebaseConfig.appId!);
     const q = query(collection(db, collectionPath));
     const querySnapshot = await getDocs(q);
@@ -41,7 +40,6 @@ export async function generateStaticParams() {
     return querySnapshot.docs
       .map((doc: DocumentData) => {
         const slug = doc.data().slug;
-        // Ensure slug is a non-empty string before returning
         return typeof slug === 'string' && slug ? { slug } : null; 
       })
       .filter(Boolean) as { slug: string }[];
@@ -78,13 +76,18 @@ async function fetchPost(slug: string): Promise<PostData | null> {
   }
 }
 
+// 💥 FIX: Define the props interface correctly for a dynamic route.
+// This interface correctly tells TypeScript the structure, allowing the 'await' in the function body.
 interface BlogPageProps {
-  // Corrected interface type: params is a standard object
-  params: { slug: string }; 
+  params: {
+    slug: string;
+  };
+  // The searchParams property is optional for this component, but required by PageProps
+  searchParams?: { [key: string]: string | string[] | undefined }; 
 }
 
 export default async function BlogPostPage(props: BlogPageProps) {
-    // 💥 FIX: Next.js runtime explicitly requires the await keyword here
+    // ✅ Retained runtime fix: Awaiting the synchronous object to satisfy Next.js runtime warning/error
     const { slug } = await props.params; 
     
     const post = await fetchPost(slug);
