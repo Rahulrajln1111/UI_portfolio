@@ -28,24 +28,32 @@ const extractToc = (markdown: string): TocItem[] => {
     return toc;
 };
 
-// Sanitize IDs for use in HTML/URLs
+// Sanitize IDs for use in HTML/URLs (Updated to allow underscores for code fields like _IO_list_all)
 const sanitizeId = (id: string) => {
     if (!id) return '';
+    
+    // Allows a-z, 0-9, spaces, hyphens, and underscores.
     return id.toLowerCase()
-             .replace(/[^a-z0-9\s-]/g, '-')
+             .replace(/[^a-z0-9\s-_]/g, '') 
              .trim()
              .replace(/\s+/g, '-')
              .replace(/-+/g, '-')
              .replace(/^-|-$/g, '');
 };
 
-// --- Smooth Scroll Handler ---
+// --- Smooth Scroll Handler (Cleaned) ---
 const handleScrollToId = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
     const element = document.getElementById(id);
-    if (!element) return;
 
-    const fixedHeaderHeight = 96; // adjust if your header is taller/shorter
+    if (!element) {
+        window.history.pushState(null, '', `#${id}`);
+        return;
+    }
+
+    // Fixed header height (96px, robustly handling the scroll offset)
+    const fixedHeaderHeight = 96; 
+    
     const elementPosition = element.getBoundingClientRect().top + window.scrollY;
     const offsetPosition = elementPosition - fixedHeaderHeight;
 
@@ -108,23 +116,34 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
                         </h2>
                         <ul className="text-gray-300 text-sm space-y-1">
                             {sectionsToRender.length > 0 ? sectionsToRender.map((section, index) => {
+                                // 1. Generate the sanitized ID based on the title (must match the heading source)
                                 const safeId = sanitizeId(section.id || section.title || `section-${index}`);
-                                const targetId = `section-${safeId}-heading`;
+                                
+                                // 2. Construct the full, unique target ID (MUST match the ID on the <h2> tag below)
+                                const targetId = `section-${safeId}-heading`; 
+
+                                // FIX: Strip backticks from section title for display
+                                const cleanTitle = section.title.replace(/^`|`$/g, '');
 
                                 return (
                                     <li key={section.id || index}>
                                         <a
                                             href={`#${targetId}`}
-                                            onClick={(e) => handleScrollToId(e, targetId)}
+                                            onClick={(e) => handleScrollToId(e, targetId)} 
                                             className="hover:text-[#00ff00] transition-colors block whitespace-nowrap overflow-hidden text-ellipsis"
                                         >
-                                            {index + 1}. {section.title}
+                                            {index + 1}. {cleanTitle}
                                         </a>
                                     </li>
                                 );
                             }) :
                             legacyToc.length > 0 ? legacyToc.map((item, index) => {
+                                // Target ID is just the sanitized markdown text
                                 const safeId = sanitizeId(item.id || item.text || `legacy-${index}`);
+                                
+                                // FIX: Strip leading/trailing backticks from the text for display
+                                const cleanText = item.text.replace(/^`|`$/g, '');
+                                
                                 return (
                                     <li key={item.id} style={{ marginLeft: `${(item.level - 1) * 10}px` }}>
                                         <a
@@ -132,7 +151,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
                                             onClick={(e) => handleScrollToId(e, safeId)}
                                             className="hover:text-[#00ff00] transition-colors block whitespace-nowrap overflow-hidden text-ellipsis"
                                         >
-                                            {item.text}
+                                            {cleanText}
                                         </a>
                                     </li>
                                 );
@@ -167,13 +186,17 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
                         {sectionsToRender.length > 0 ? (
                             <div>
                                 {sectionsToRender.map((section, index) => {
+                                    // 1. Generate the sanitized ID based on the title (must match TOC)
                                     const safeId = sanitizeId(section.id || section.title || `section-${index}`);
+                                    
+                                    // 2. Construct the full, unique target ID (MUST match the TOC link)
                                     const targetId = `section-${safeId}-heading`;
 
                                     return (
                                         <div key={section.id || index} className="mb-10 border-b border-gray-700/50 pb-6">
                                             <h2
                                                 id={targetId}
+                                                // Removed scroll-mt-24: Offset is handled by the JS handler for reliability
                                                 className="text-3xl font-bold border-b-2 border-[#00ff00] pb-1 mt-8 mb-4 text-[#00ff00]"
                                             >
                                                 {index + 1}. {section.title}

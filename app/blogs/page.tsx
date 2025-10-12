@@ -15,6 +15,10 @@ import Link from 'next/link';
 import { Calendar, Tag, ArrowRight } from 'lucide-react'; 
 import { firebaseConfig } from '@/lib/firebase';
 
+// --- ISR Configuration for Next.js ---
+// This tells Next.js to regenerate the page cache every 60 seconds.
+export const revalidate = 60; 
+
 // ----------------------------------------------------
 // ----------------------------------------------------
 

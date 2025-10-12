@@ -202,7 +202,7 @@ export default function NewPostForm({
 
     
     // ----------------------------------------------------
-    // CONTENT HANDLERS (Simplified)
+    // CONTENT HANDLERS (Fixed with useCallback)
     // ----------------------------------------------------
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,15 +218,18 @@ export default function NewPostForm({
         });
     };
 
-    const handleContentUpdate = (markdown: string) => {
+    // 🔥 FIX: Wrap in useCallback to ensure a stable function reference
+    const handleContentUpdate = useCallback((markdown: string) => {
         setFormData(prev => ({ ...prev, content: markdown }));
+        
+        // Clear markdown from localStorage after content is loaded/updated
         if (typeof window !== 'undefined' && localStorage.getItem(MARKDOWN_LOCAL_STORAGE_KEY)) {
             localStorage.removeItem(MARKDOWN_LOCAL_STORAGE_KEY);
             localStorage.removeItem(FILENAME_LOCAL_STORAGE_KEY);
             setUploadedFileName(null); 
         }
-    };
-    
+    }, [setFormData, setUploadedFileName]); 
+
     const handleMarkdownUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !file.name.endsWith(".md")) { e.target.value = ""; return; }
@@ -247,7 +250,10 @@ export default function NewPostForm({
         e.target.value = ""; 
     };
 
-    const handleEditorReady = (editor: any) => { setEditorInstance(editor); }
+    // 🔥 FIX: Wrap in useCallback to prevent infinite re-render loop
+    const handleEditorReady = useCallback((editor: any) => { 
+        setEditorInstance(editor); 
+    }, [setEditorInstance]); 
 
     // ----------------------------------------------------
     // LOGOUT HANDLER (FIX: Correctly uses the defined 'auth' state)
