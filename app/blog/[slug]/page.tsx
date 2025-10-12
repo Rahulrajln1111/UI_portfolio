@@ -12,6 +12,9 @@ import { notFound } from 'next/navigation';
 import BlogPostContent from './BlogPostContent'; 
 import { db, firebaseConfig } from '@/lib/firebase'; // Adjust path if needed
 
+// 🚀 FIX for Caching: Enable Incremental Static Regeneration (ISR)
+export const revalidate = 60; 
+
 interface PostData {
   id: string;
   title: string;
@@ -38,7 +41,8 @@ export async function generateStaticParams() {
     return querySnapshot.docs
       .map((doc: DocumentData) => {
         const slug = doc.data().slug;
-        return typeof slug === 'string' && slug ? { slug } : null;
+        // Ensure slug is a non-empty string before returning
+        return typeof slug === 'string' && slug ? { slug } : null; 
       })
       .filter(Boolean) as { slug: string }[];
   } catch (error) {
@@ -75,11 +79,14 @@ async function fetchPost(slug: string): Promise<PostData | null> {
 }
 
 interface BlogPageProps {
-    params: Promise<{ slug: string }>; // params is awaited
+  // Corrected interface type: params is a standard object
+  params: { slug: string }; 
 }
 
 export default async function BlogPostPage(props: BlogPageProps) {
-    const { slug } = await props.params; // ✅ await params first
+    // 💥 FIX: Next.js runtime explicitly requires the await keyword here
+    const { slug } = await props.params; 
+    
     const post = await fetchPost(slug);
 
     if (!post) return notFound();
