@@ -12,7 +12,8 @@ import { notFound } from 'next/navigation';
 import BlogPostContent from './BlogPostContent'; 
 import { db, firebaseConfig } from '@/lib/firebase'; // Adjust path if needed
 
-// 🚀 FIX for Caching: Enable Incremental Static Regeneration (ISR)
+// 🚀 FIX for Caching: Enable Incremental Static Regeneration (ISR).
+// The page will be re-rendered on the server and cached for a maximum of 60 seconds.
 export const revalidate = 60; 
 
 interface PostData {
@@ -29,6 +30,7 @@ interface PostData {
 const getCollectionPath = (appId: string) => `/artifacts/${appId}/public/data/blog_posts`;
 
 // --- Generate static paths for SSG ---
+// This pre-renders pages for known slugs at build time.
 export async function generateStaticParams() {
   try {
     const collectionPath = getCollectionPath(firebaseConfig.appId!);
@@ -76,14 +78,15 @@ async function fetchPost(slug: string): Promise<PostData | null> {
   }
 }
 
-// 💥 FINAL FIX: Reverting 'params' back to a Promise type to satisfy the Next.js compiler.
+// 💥 CORRECTED INTERFACE: Must be a Promise of the params object to satisfy the build type check 
+// due to the presence of generateStaticParams.
 interface BlogPageProps {
   params: Promise<{ slug: string }>; 
 }
 
 export default async function BlogPostPage(props: BlogPageProps) {
-    // ✅ This line is required by the Next.js runtime to handle dynamic params correctly.
-    // It is now correctly typed in the interface above.
+    // ✅ REQUIRED: Awaiting props.params to satisfy the Next.js runtime constraint 
+    // when using dynamic parameters in async Server Components.
     const { slug } = await props.params; 
     
     const post = await fetchPost(slug);
